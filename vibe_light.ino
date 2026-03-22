@@ -6,10 +6,13 @@
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
-int delayval = 25; // timing delay
+int sweepDelay = 50;
+int fadeDelay = 30;
+int fadeAmount = 5;
+int brightness = 0;
 
 String currentMode = "IDLE";  // Current LED mode: IDLE, PLAN, BUILD
-unsigned long lastBlinkTime = 0;  // Last time LED was toggled in PLAN mode
+String prevMode = "";
 
 void setup() {
   pixels.begin(); // Initializes the NeoPixel library.
@@ -22,37 +25,52 @@ void loop() {
     String cmd = Serial.readStringUntil('\n');
     cmd.trim();
     Serial.println("RECEIVED: [" + cmd + "]");
-    
-    if (cmd == "PLAN") {
-      Serial.println("SWITCHING TO: PLAN");
-      currentMode = "PLAN";
-      lastBlinkTime = 0;
-    } else if (cmd == "BUILD") {
-      Serial.println("SWITCHING TO: BUILD");
-      currentMode = "BUILD";
-    } else if (cmd == "IDLE") {
-      Serial.println("SWITCHING TO: IDLE");
-      currentMode = "IDLE";
-    } else {
-      Serial.println("UNKNOWN: [" + cmd + "]");
+    if (cmd == "PLAN" || cmd == "BUILD" || cmd == "IDLE") {
+      Serial.print("SWITCHING TO ");
+      Serial.println(cmd);
+      if (prevMode != currentMode) {
+        prevMode = currentMode;
+      }
+      currentMode = cmd;
     }
   }
 
   if (currentMode == "PLAN") {
+    if (prevMode != currentMode) {
+      fill_solid(255, 0, 255);
+    }
     sweep_forward(255, 0, 255);
     sweep_backward(255, 0, 255);
   }
   else if (currentMode == "BUILD") {
+    if (prevMode != currentMode) {
+      fill_solid(0, 0, 255);
+    }
     sweep_forward(0, 0, 255);
     sweep_backward(0, 0, 255);
   }
   else if (currentMode == "IDLE") {
-    // Use green for debugging
-    sweep_forward(0, 255, 0);
-    sweep_backward(0, 255, 0);
+    full_fade();
   }
 }
 
+void fill_solid(int r, int g, int b) {
+  for(int i = 0; i < NUMPIXELS; i++) {
+    pixels.setPixelColor(i, pixels.Color(r, g, b)); 
+  }
+  pixels.show();
+}
+
+void full_fade() {
+  brightness += fadeAmount;
+  fill_solid(brightness, brightness, brightness);
+  // reverse the direction of the fading at the ends of the fade:
+  if (brightness <= 0 || brightness >= 255) {
+    fadeAmount = -fadeAmount;
+  }
+  // wait to see the dimming effect
+  delay(fadeDelay);
+}
 
 void sweep_forward(int r, int g, int b) {
   for(int i = 0; i < NUMPIXELS; i++){
@@ -66,7 +84,7 @@ void sweep_forward(int r, int g, int b) {
       pixels.setPixelColor(i+1, pixels.Color(r/4, g/4, b/4));
     }
     pixels.show(); // This sends the updated pixel color to the hardware.
-    delay(delayval); // Delay for a period of time (in milliseconds).
+    delay(sweepDelay); // Delay for a period of time (in milliseconds).
   }
 }
 
@@ -80,6 +98,6 @@ void sweep_backward(int r, int g, int b) {
       pixels.setPixelColor(i+1, pixels.Color(r/4, g/4, b/4));
     }
     pixels.show();
-    delay(delayval);
+    delay(sweepDelay);
   }
 }
