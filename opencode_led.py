@@ -3,11 +3,19 @@ import time
 from datetime import datetime
 
 import serial
+from serial.tools import list_ports
 
-PORT = "/dev/cu.usbmodem2101"
+
+def get_port():
+    for p in list_ports.comports():
+        if "usbmodem" in p.device or "Arduino" in str(p.description):
+            return p.device
+    return "/dev/cu.usbmodem2101"
 
 
-try: 
+PORT = get_port()
+
+try:
     ser = serial.Serial(PORT, 9600, timeout=1)
     ser.dtr = False
     ser.rts = False
