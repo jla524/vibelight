@@ -2,7 +2,7 @@
 
 #define PIN 2	 // input pin Neopixel is attached to
 
-#define NUMPIXELS      8 // number of neopixels in Ring
+#define NUMPIXELS 8 // number of neopixels in Ring
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
@@ -17,6 +17,12 @@ String prevMode = "";
 void setup() {
   pixels.begin(); // Initializes the NeoPixel library.
   Serial.begin(9600);
+  // Test: Light up first pixel green at boot to verify hardware
+  pixels.setPixelColor(0, pixels.Color(0, 255, 0));
+  pixels.show();
+  delay(500);
+  pixels.clear();
+  pixels.show();
 }
 
 void loop() {
@@ -61,7 +67,7 @@ void fill_solid(int r, int g, int b) {
 
 void full_fade() {
   brightness += fadeAmount;
-  fill_solid(brightness, brightness, brightness);
+  fill_solid(0, brightness, 0);
   // reverse the direction of the fading at the ends of the fade:
   if (brightness <= 0 || brightness >= 255) {
     fadeAmount = -fadeAmount;
@@ -99,3 +105,5 @@ void sweep_backward(int r, int g, int b) {
     delay(sweepDelay);
   }
 }
+
+
