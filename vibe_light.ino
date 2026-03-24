@@ -2,7 +2,7 @@
 
 #define PIN 2	 // input pin Neopixel is attached to
 
-#define NUMPIXELS      24 // number of neopixels in Ring
+#define NUMPIXELS      8 // number of neopixels in Ring
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
@@ -28,9 +28,7 @@ void loop() {
     if (cmd == "PLAN" || cmd == "BUILD" || cmd == "IDLE") {
       Serial.print("SWITCHING TO ");
       Serial.println(cmd);
-      if (prevMode != currentMode) {
-        prevMode = currentMode;
-      }
+      prevMode = currentMode;
       currentMode = cmd;
     }
   }
