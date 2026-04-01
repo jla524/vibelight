@@ -4,7 +4,7 @@ export default async ({ $ }) => {
   const pluginPath = new URL(import.meta.url).pathname;
   const realPluginPath = realpathSync(pluginPath);
   const pluginDir = new URL(".", `file://${realPluginPath}`).pathname;
-  const ledScript = `${pluginDir}opencode_led.py`;
+  const ledScript = `${pluginDir}vibelight.py`;
   const venvPython = `${pluginDir}.venv/bin/python`;
 
   let currentMode: 'idle' | 'plan' | 'build' = 'idle';
