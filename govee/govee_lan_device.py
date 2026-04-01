@@ -1,5 +1,7 @@
 import json
 import time
+import threading
+import math
 from . import udp
 from . import discover
 
@@ -27,6 +29,10 @@ class GoveeLanDevice:
             self.isInitialized = True
             print(f"Discovered Govee LED device: {name} at {ip} ({mac})")
 
+        # Initialize effect management (even if device not found)
+        self._current_effect = None
+        self._stop_event = threading.Event()
+
     def on(self):
         """Turn the light on."""
         payload = {"msg": {"cmd": "turn", "data": {"value": 1}}}
@@ -39,20 +45,19 @@ class GoveeLanDevice:
         print("Turning off...")
         udp.send_udp_packet(self.ip, DEVICE_CONTROL_PORT, payload)
 
-    def brightness(self, brightness):
+    def set_brightness(self, brightness):
         """Set brightness (0-100)."""
         brightness = max(0, min(100, int(brightness)))
         payload = {"msg": {"cmd": "brightness", "data": {"value": brightness}}}
         print(f"Setting brightness to {brightness}%...")
         udp.send_udp_packet(self.ip, DEVICE_CONTROL_PORT, payload)
 
-    def color(self, colors, temp=6500):
+    def set_color(self, r, g, b, temp=6500):
         """Set color and color temperature."""
-        r = max(0, min(255, int(colors[0])))
-        g = max(0, min(255, int(colors[1])))
-        b = max(0, min(255, int(colors[2])))
+        r = max(0, min(255, int(r)))
+        g = max(0, min(255, int(g)))
+        b = max(0, min(255, int(b)))
         temp = max(2700, min(9000, int(temp)))
-
         payload = {
             "msg": {
                 "cmd": "colorwc",
@@ -62,19 +67,9 @@ class GoveeLanDevice:
         print(f"Setting color to RGB({r},{g},{b}) @ {temp}K...")
         udp.send_udp_packet(self.ip, DEVICE_CONTROL_PORT, payload)
 
-    # Convenience methods used by vibe.py
-    def set_brightness(self, brightness):
-        """Convenience method matching vibe.py expectations."""
-        self.brightness(brightness)
-
-    def set_color(self, r, g, b, temp=6500):
-        """Convenience method matching vibe.py expectations.
-        Default color temperature is 6500K (neutral daylight)."""
-        self.color([r, g, b], temp)
-
     def blink(self, reps=1):
         """Blink the light."""
-        current_state = self.status()
+        current_state = self.get_status()
         if not current_state:
             return
 
@@ -91,7 +86,7 @@ class GoveeLanDevice:
                 self.on()
                 time.sleep(1)
 
-    def status(self):
+    def get_status(self):
         """Get current device status."""
         payload = {"msg": {"cmd": "devStatus", "data": {}}}
         udp.send_udp_packet(self.ip, DEVICE_CONTROL_PORT, payload)
@@ -108,3 +103,70 @@ class GoveeLanDevice:
                 "colorTemp": status.get("colorTemInKelvin", 6500),
             }
         return None
+
+    def stop(self):
+        """Stop any currently running effect."""
+        if self._current_effect and self._current_effect.is_alive():
+            self._stop_event.set()
+            self._current_effect.join(timeout=1.0)
+            self._current_effect = None
+            self._stop_event.clear()
+        print("Stopped current effect.")
+
+    def _breathe_thread(self, color, min_bright, max_bright, speed):
+        """Background thread for breathing effect."""
+        r, g, b = color
+        phase = 0.0
+
+        while not self._stop_event.is_set():
+            # Calculate breathing brightness using sine wave
+            brightness = (
+                min_bright + (max_bright - min_bright) * (math.sin(phase) + 1) / 2
+            )
+            brightness = int(brightness)
+
+            # Set color and brightness
+            self.set_color(r, g, b, 6500)
+            self.set_brightness(brightness)
+
+            phase += 0.1 * speed
+            time.sleep(0.05)  # ~20 updates per second for smooth breathing
+
+    def breathe(self, r, g, b, min_bright=20, max_bright=85, speed=2.0):
+        """Start breathing effect with given color and parameters."""
+        if not self.isInitialized:
+            print("Device not initialized.")
+            return
+
+        # Stop any existing effect
+        self.stop()
+
+        print(
+            f"Starting breathe effect with RGB({r},{g},{b}), range {min_bright}-{max_bright}, speed {speed}"
+        )
+
+        self._stop_event.clear()
+        self._current_effect = threading.Thread(
+            target=self._breathe_thread,
+            args=((r, g, b), min_bright, max_bright, speed),
+            daemon=True,
+        )
+        self._current_effect.start()
+
+    def fade_to(self, r, g, b, duration=1.5):
+        """Smooth fade to a target color over specified duration."""
+        if not self.isInitialized:
+            return
+
+        steps = 20
+        delay = duration / steps
+
+        for i in range(steps + 1):
+            if self._stop_event.is_set():
+                break
+            factor = i / steps
+            current_r = int(255 * (1 - factor) + r * factor)
+            current_g = int(255 * (1 - factor) + g * factor)
+            current_b = int(255 * (1 - factor) + b * factor)
+            self.set_color(current_r, current_g, current_b, 6500)
+            time.sleep(delay)
