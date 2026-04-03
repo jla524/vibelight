@@ -18,14 +18,19 @@ export default async ({ $, client }) => {
     }
 
     const now = Date.now();
-    if (now - lastUpdate < MIN_INTERVAL_MS) {
-      await new Promise(resolve => setTimeout(resolve, MIN_INTERVAL_MS));
+    const elapsed = now - lastUpdate;
+    if (elapsed < MIN_INTERVAL_MS) {
+      await new Promise(resolve => setTimeout(resolve, MIN_INTERVAL_MS - elapsed));
     }
 
     currentMode = mode;
-    isIdle = mode === 'idle';
     lastUpdate = Date.now();
-    await $`${venvPython} ${ledScript} ${mode}`.quiet();
+
+    try {
+      await $`${venvPython} ${ledScript} ${mode}`.quiet();
+    } catch (err) {
+      console.error(`Failed to send LED command "${mode}":`, err);
+    }
   };
 
   return {
@@ -36,17 +41,20 @@ export default async ({ $, client }) => {
         const info = event.properties?.info;
         if (!info) return;
 
-        if (info.role === "user" && "agent" in info) {
-          const agent = (info as any).agent;
+        if (info.role === "user" && typeof info === "object" && "agent" in info) {
+          const agent = info.agent;
           if (agent === "plan") {
+            isIdle = false;
             await sendLedCommand("plan");
           } else if (agent === "build") {
+            isIdle = false;
             await sendLedCommand("build");
           }
         }
       }
 
       if (event.type === "session.idle") {
+        isIdle = true;
         await sendLedCommand("idle");
       }
     }
