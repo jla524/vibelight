@@ -2,6 +2,8 @@
 
 A light that fits the vibe. Inspired by [claude-lamp](https://github.com/bobek-balinek/claude-lamp).
 
+![Vibelight Demo](demo.gif)
+
 ## Features
 - Govee Floor Lamp 2 (H607C) control via LAN
 - Mode-based breathing effects (plan/build/idle)

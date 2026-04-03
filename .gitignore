@@ -38,6 +38,8 @@ Thumbs.db
 # Project specific
 *.log
 .env
+*.MOV
+*.mov
 
 # Ruff cache
 .ruff_cache/
