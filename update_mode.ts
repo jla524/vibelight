@@ -8,6 +8,7 @@ export default async ({ $, client }) => {
   const venvPython = `${pluginDir}.venv/bin/python`;
 
   let currentMode: 'idle' | 'plan' | 'build' | null = null;
+  let isIdle = false;
   let lastUpdate = 0;
   const MIN_INTERVAL_MS = 500;
 
@@ -22,6 +23,7 @@ export default async ({ $, client }) => {
     }
 
     currentMode = mode;
+    isIdle = mode === 'idle';
     lastUpdate = Date.now();
     await $`${venvPython} ${ledScript} ${mode}`.quiet();
   };
@@ -29,6 +31,8 @@ export default async ({ $, client }) => {
   return {
     event: async ({ event }) => {
       if (event.type === "message.updated") {
+        if (isIdle) return;
+
         const info = event.properties?.info;
         if (!info) return;
 
