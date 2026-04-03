@@ -69,6 +69,15 @@ class GoveeLanDevice:
         debug_print(f"Command failed after {MAX_DEVICE_RETRIES} attempts")
         return False
 
+    def _send_command_fast(self, payload):
+        """Send a single UDP packet without retry — for high-frequency effects."""
+        if not self.isInitialized or not self.ip:
+            return False
+        try:
+            return udp.send_udp_packet(self.ip, DEVICE_CONTROL_PORT, payload, retries=1)
+        except Exception:
+            return False
+
     def is_responsive(self, timeout=2):
         """Check if device is responsive by sending a status request.
 
@@ -180,11 +189,10 @@ class GoveeLanDevice:
 
         try:
             payload = {"msg": {"cmd": "devStatus", "data": {}}}
-            success = udp.send_udp_packet(self.ip, DEVICE_CONTROL_PORT, payload)
-            if not success:
-                return None
-
-            data, addr = udp.receive_udp_packet(MCAST_GRP, MCAST_RECV_PORT, 3)
+            # Device responds via multicast, so we listen on multicast group
+            data, addr = udp.send_and_receive_udp_packet(
+                MCAST_GRP, MCAST_RECV_PORT, payload, timeout=3, multicast=True
+            )
 
             if data:
                 try:
@@ -215,50 +223,68 @@ class GoveeLanDevice:
         debug_print("Stopped current effect.")
 
     def _breathe_thread(self, color, min_bright, max_bright, speed):
-        """Background thread for breathing effect with graceful error handling."""
+        """Background thread for breathing effect with natural easing.
+
+        Brightness is baked into the RGB values (scaled by brightness/100) so
+        that a single colorwc packet per tick controls both color and intensity.
+        This avoids the two-command race where a separate brightness command is
+        dropped or ignored by the H607C after a colorwc command.
+
+        Uses a cosine curve with gamma correction for smooth, natural-looking
+        transitions that match human brightness perception.
+        """
         r, g, b = color
         phase = 0.0
         consecutive_failures = 0
         max_consecutive_failures = 10
 
+        # Asymmetric breathing: faster inhale, slower exhale
+        inhale_ratio = 0.4  # inhale takes 40% of the cycle
+
+        # Gamma correction factor (standard sRGB gamma ~2.2)
+        gamma = 2.2
+
         while not self._stop_event.is_set():
             try:
-                # Calculate breathing brightness using sine wave
-                brightness = (
-                    min_bright + (max_bright - min_bright) * (math.sin(phase) + 1) / 2
-                )
-                brightness = int(brightness)
+                # Normalized phase position within one full cycle (0 to 1)
+                cycle_pos = (phase % (2 * math.pi)) / (2 * math.pi)
 
-                # Send both color and brightness on every update
-                # This ensures the color stays active on H607C
+                # Asymmetric phase: warp the cycle so inhale is faster
+                if cycle_pos < inhale_ratio:
+                    # Inhale phase: map [0, inhale_ratio] -> [0, 0.5]
+                    t = cycle_pos / inhale_ratio * 0.5
+                else:
+                    # Exhale phase: map [inhale_ratio, 1] -> [0.5, 1.0]
+                    t = 0.5 + (cycle_pos - inhale_ratio) / (1 - inhale_ratio) * 0.5
+
+                # Cosine easing: smooth at extremes, faster through midpoint
+                eased = (1 - math.cos(t * 2 * math.pi)) / 2
+
+                # Apply gamma correction for perceptual linearity
+                gamma_eased = math.pow(eased, gamma)
+
+                # Map to brightness range
+                brightness = min_bright + (max_bright - min_bright) * gamma_eased
+                factor = brightness / 100.0
+
+                # Scale RGB by brightness factor and send as a single colorwc packet
+                scaled_r = max(1, int(round(r * factor)))
+                scaled_g = max(1, int(round(g * factor)))
+                scaled_b = max(1, int(round(b * factor)))
+
                 payload = {
                     "msg": {
                         "cmd": "colorwc",
                         "data": {
-                            "color": {"r": r, "g": g, "b": b},
+                            "color": {"r": scaled_r, "g": scaled_g, "b": scaled_b},
                             "colorTemInKelvin": 0,
                         },
                     }
                 }
-                color_success = self._send_command(payload)
-                if color_success:
-                    # Reset failure counter on any successful command
+                success = self._send_command_fast(payload)
+                if success:
                     consecutive_failures = 0
-
-                # Brief delay before brightness command to avoid flooding device
-                time.sleep(0.05)
-
-                # Also update brightness separately
-                brightness_payload = {
-                    "msg": {"cmd": "brightness", "data": {"value": brightness}}
-                }
-                brightness_success = self._send_command(brightness_payload)
-                if brightness_success:
-                    # Reset failure counter on any successful command
-                    consecutive_failures = 0
-
-                # Only increment failures if both commands failed
-                if not color_success and not brightness_success:
+                else:
                     consecutive_failures += 1
 
                 if consecutive_failures >= max_consecutive_failures:
@@ -267,8 +293,8 @@ class GoveeLanDevice:
                     )
                     break
 
-                phase += 0.1 * speed
-                time.sleep(0.2)  # 5 updates per second for smooth breathing
+                phase += 0.08 * speed
+                time.sleep(0.08)  # ~12 updates per second for smooth breathing
             except Exception as e:
                 debug_print(f"Error in breathe thread: {e}")
                 consecutive_failures += 1
@@ -288,11 +314,13 @@ class GoveeLanDevice:
         # Stop any existing effect
         self.stop()
 
-        # Ensure light is on, then set initial color and brightness
+        # Turn on unconditionally (idempotent - no harm if already on)
         self.on()
-        time.sleep(0.05)  # Brief delay after turning on
+        time.sleep(0.15)
+
+        # Set initial color (brightness is baked into RGB in the breathe thread)
         self.set_color(r, g, b, temp=None)
-        self.set_brightness(min_bright)
+        time.sleep(0.1)
 
         debug_print(
             f"Starting breathe effect with RGB({r},{g},{b}), range {min_bright}-{max_bright}, speed {speed}"

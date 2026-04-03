@@ -8,6 +8,7 @@ and smooth transitions between modes.
 """
 
 from .govee_lan_device import GoveeLanDevice
+from .lock import acquire_lock, release_lock
 from .utils import debug_print
 
-__all__ = ["GoveeLanDevice", "debug_print"]
+__all__ = ["GoveeLanDevice", "debug_print", "acquire_lock", "release_lock"]
