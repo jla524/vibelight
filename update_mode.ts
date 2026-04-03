@@ -7,12 +7,11 @@ export default async ({ $, client }) => {
   const ledScript = `${pluginDir}vibe.py`;
   const venvPython = `${pluginDir}.venv/bin/python`;
 
-  let currentMode: 'on' | 'off' | 'idle' | 'plan' | 'build' = 'idle';
+  let currentMode: 'idle' | 'plan' | 'build' | null = null;
   let lastUpdate = 0;
   const MIN_INTERVAL_MS = 500;
-  let currentSessionId: string | null = null;
 
-  const sendLedCommand = async (mode: 'on' | 'off' | 'idle' | 'plan' | 'build') => {
+  const sendLedCommand = async (mode: 'idle' | 'plan' | 'build') => {
     if (mode === currentMode) {
       return;
     }
@@ -27,40 +26,12 @@ export default async ({ $, client }) => {
     await $`${venvPython} ${ledScript} ${mode}`.quiet();
   };
 
-  const detectAgentFromSession = async () => {
-    if (!currentSessionId) return;
-    try {
-      const session = await client.session.get({ path: { id: currentSessionId } });
-      const messages = await client.session.messages({ path: { id: currentSessionId } });
-      const lastMessage = messages[messages.length - 1];
-      if (lastMessage?.info?.role === "user" && "agent" in lastMessage.info) {
-        const agent = (lastMessage.info as any).agent;
-        if (agent === "plan" || agent === "build") {
-          await sendLedCommand(agent);
-        }
-      }
-    } catch {
-      // Session may not exist yet
-    }
-  };
-
   return {
-    "session.created": async ({ event }) => {
-      currentSessionId = event?.properties?.session?.id || null;
-      await sendLedCommand("on");
-    },
-
-    "session.deleted": async () => {
-      currentSessionId = null;
-      await sendLedCommand("off");
-    },
-
     event: async ({ event }) => {
       if (event.type === "message.updated") {
         const info = event.properties?.info;
         if (!info) return;
 
-        // Detect agent switches from user messages
         if (info.role === "user" && "agent" in info) {
           const agent = (info as any).agent;
           if (agent === "plan") {
