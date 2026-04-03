@@ -1,29 +1,54 @@
 # Vibelight
 
-A light that fits the vibe. Inspired by [claude-lamp](https://github.com/bobek-balinek/claude-lamp).
+A light that fits the vibe. Controls a Govee Floor Lamp 2 (H607C) via LAN multicast. Provides mode-based breathing effects with smooth transitions.
 
 <img src="demo.gif" height="480" alt="Vibelight Demo">
 
 ## Features
-- Govee Floor Lamp 2 (H607C) control via LAN
-- Mode-based breathing effects (plan/build/idle)
-- Smooth transitions between modes
-- Background effect management with `stop()` capability
+- Pure LAN control (no cloud required)
+- Modes: `plan` (energetic orange), `build` (balanced blue), `idle` (calm gray)
+- `on`/`off` controls
+- Background effect threads with graceful stop
+- Opencode AI integration for automatic session lighting
 
-## Quickstart
+## Installation
 
 ```bash
-# Run with: `python vibe.py [plan|build|idle]`
-python vibe.py idle
+# Using uv (recommended)
+uv sync
 
-# Install as opencode plugin (auto-syncs lamp to agent state)
-ln -s "$(pwd)/update_mode.ts" ~/.config/opencode/plugins/
-
-# Turn on/off light when opencode starts/exits (add to ~/.zshrc)
-export VIBELIGHT_DIR="/Users/dudu/repos/vibelight"
-opencode() {
-  "$VIBELIGHT_DIR/.venv/bin/python" "$VIBELIGHT_DIR/vibe.py" on
-  command opencode "$@"
-  "$VIBELIGHT_DIR/.venv/bin/python" "$VIBELIGHT_DIR/vibe.py" off
-}
+# Run directly
+uv run python vibe.py idle
 ```
+
+## Usage
+
+```bash
+python vibe.py [on|plan|build|idle|off]
+```
+
+- `plan`: Orange breathing for focused work
+- `build`: Blue for development
+- `idle`: Neutral gray
+- `on`/`off`: Basic power control
+
+The script auto-discovers the device on first run.
+
+## Opencode Plugin
+
+The `.opencode/plugins/vibelight.js` plugin turns the light on at session start and off at session end.
+
+See `.opencode/` for configuration.
+
+## Development
+
+```bash
+# Lint and format
+ruff check .
+ruff format .
+
+# See AGENTS.md for full guidelines, architecture, and code style
+```
+
+Project uses the vendored `govee/` package for UDP multicast communication.
+
