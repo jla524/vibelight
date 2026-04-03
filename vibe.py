@@ -46,7 +46,6 @@ def set_status(status: str):
         return
 
     led.stop_effect()
-    led.on()
 
     if status == "plan":
         led.set_mode_color(245, 130, 40)
@@ -55,6 +54,7 @@ def set_status(status: str):
     else:  # idle
         led.set_mode_color(240, 240, 240)
 
+    led.on()
     debug_print(f"Set {status} color.")
 
 
