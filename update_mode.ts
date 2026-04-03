@@ -36,8 +36,6 @@ export default async ({ $, client }) => {
   return {
     event: async ({ event }) => {
       if (event.type === "message.updated") {
-        if (isIdle) return;
-
         const info = event.properties?.info;
         if (!info) return;
 
