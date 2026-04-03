@@ -42,13 +42,6 @@ export default async ({ $, client }) => {
         }
       }
 
-      if (event.type === "session.status") {
-        const status = event.properties?.status;
-        if (status?.type === "idle") {
-          await sendLedCommand("idle");
-        }
-      }
-
       if (event.type === "session.idle") {
         await sendLedCommand("idle");
       }
