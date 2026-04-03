@@ -10,19 +10,46 @@ export default async ({ $ }) => {
   let currentMode: 'idle' | 'plan' | 'build' = 'idle';
   let lastUpdate = 0;
   const DEBOUNCE_MS = 100;
+  const STABILITY_MS = 300; // Require 300ms of stability before changing
+  let pendingMode: 'idle' | 'plan' | 'build' | null = null;
+  let stabilityTimer: ReturnType<typeof setTimeout> | null = null;
 
   const sendLedCommand = async (mode: 'idle' | 'plan' | 'build') => {
-    if (mode === currentMode) return;
+    if (mode === currentMode) {
+      // Cancel any pending change if we're back to current mode
+      if (stabilityTimer) {
+        clearTimeout(stabilityTimer);
+        stabilityTimer = null;
+      }
+      pendingMode = null;
+      return;
+    }
     
+    // Debounce rapid event spam
     const now = Date.now();
     if (now - lastUpdate < DEBOUNCE_MS) {
       setTimeout(() => sendLedCommand(mode), DEBOUNCE_MS);
       return;
     }
     
-    currentMode = mode;
-    lastUpdate = now;
-    await $`${venvPython} ${ledScript} ${mode}`;
+    // If this is a new mode request, start stability timer
+    if (pendingMode !== mode) {
+      pendingMode = mode;
+      
+      // Clear any existing timer
+      if (stabilityTimer) {
+        clearTimeout(stabilityTimer);
+      }
+      
+      // Set timer to actually change mode after stability period
+      stabilityTimer = setTimeout(() => {
+        currentMode = mode;
+        lastUpdate = Date.now();
+        pendingMode = null;
+        stabilityTimer = null;
+        $`${venvPython} ${ledScript} ${mode}`;
+      }, STABILITY_MS);
+    }
   };
 
   return {
