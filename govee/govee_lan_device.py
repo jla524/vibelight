@@ -52,19 +52,35 @@ class GoveeLanDevice:
         print(f"Setting brightness to {brightness}%...")
         udp.send_udp_packet(self.ip, DEVICE_CONTROL_PORT, payload)
 
-    def set_color(self, r, g, b, temp=6500):
-        """Set color and color temperature."""
+    def set_color(self, r, g, b, temp=None):
+        """Set color. For H607C, color temperature affects white channel mixing.
+        Try temp=0 or temp=None to disable white channel and get pure colors."""
         r = max(0, min(255, int(r)))
         g = max(0, min(255, int(g)))
         b = max(0, min(255, int(b)))
-        temp = max(2700, min(9000, int(temp)))
-        payload = {
-            "msg": {
-                "cmd": "colorwc",
-                "data": {"color": {"r": r, "g": g, "b": b}, "colorTemInKelvin": temp},
+
+        if temp is None:
+            # Pure RGB mode - may work better for H607C
+            payload = {
+                "msg": {
+                    "cmd": "colorwc",
+                    "data": {"color": {"r": r, "g": g, "b": b}},
+                }
             }
-        }
-        print(f"Setting color to RGB({r},{g},{b}) @ {temp}K...")
+            print(f"Setting pure RGB({r},{g},{b})")
+        else:
+            temp = max(0, min(9000, int(temp)))
+            payload = {
+                "msg": {
+                    "cmd": "colorwc",
+                    "data": {
+                        "color": {"r": r, "g": g, "b": b},
+                        "colorTemInKelvin": temp,
+                    },
+                }
+            }
+            print(f"Setting RGB({r},{g},{b}) @ {temp}K...")
+
         udp.send_udp_packet(self.ip, DEVICE_CONTROL_PORT, payload)
 
     def blink(self, reps=1):

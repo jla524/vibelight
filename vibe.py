@@ -1,5 +1,4 @@
 import sys
-import time
 from govee import GoveeLanDevice
 
 # Discover or hard-code your Govee strip's MAC/IP once
@@ -7,22 +6,23 @@ led = GoveeLanDevice()  # auto-discovers
 
 
 def set_status(status: str):
-    """Set status with mode-specific breathing effects.
-
-    Each mode uses a different breathing pattern:
-    - plan: energetic orange (fast, high brightness)
-    - build: balanced blue (medium)
-    - idle: calm gray (slow, gentle)
+    """Set status with colors tuned for H607C.
+    
+    The H607C is sensitive to color temperature. 
+    Using pure RGB mode (temp=None) to avoid white channel mixing.
     """
     if status == "plan":
-        # Energetic orange breathing
-        led.breathe(245, 167, 66, min_bright=30, max_bright=100, speed=1.5)
+        # Softer orange - full brightness
+        led.set_color(245, 130, 40, temp=None)
+        led.set_brightness(100)
     elif status == "build":
-        # Balanced blue breathing
-        led.breathe(92, 156, 245, min_bright=20, max_bright=85, speed=2.0)
+        # Softer blue - high brightness
+        led.set_color(70, 130, 245, temp=None)
+        led.set_brightness(90)
     else:  # idle
-        # Calm light gray breathing
-        led.breathe(238, 238, 238, min_bright=15, max_bright=60, speed=3.0)
+        # Soft white/gray - relaxed brightness
+        led.set_color(240, 240, 240, temp=6500)
+        led.set_brightness(70)
 
 
 if __name__ == "__main__":
