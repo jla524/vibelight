@@ -16,4 +16,12 @@ python vibe.py idle
 
 # Install as opencode plugin (auto-syncs lamp to agent state)
 ln -s "$(pwd)/update_mode.ts" ~/.config/opencode/plugins/
+
+# Turn on/off light when opencode starts/exits (add to ~/.zshrc)
+export VIBELIGHT_DIR="/Users/dudu/repos/vibelight"
+opencode() {
+  "$VIBELIGHT_DIR/.venv/bin/python" "$VIBELIGHT_DIR/vibe.py" on
+  command opencode "$@"
+  "$VIBELIGHT_DIR/.venv/bin/python" "$VIBELIGHT_DIR/vibe.py" off
+}
 ```

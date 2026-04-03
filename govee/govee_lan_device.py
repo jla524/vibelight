@@ -1,4 +1,5 @@
 import json
+import threading
 import time
 from . import udp
 from . import discover
@@ -30,6 +31,8 @@ class GoveeLanDevice:
             self.name = name
             self.isInitialized = True
             debug_print(f"Discovered Govee LED device: {name} at {ip} ({mac})")
+        self._effect_stop_event = threading.Event()
+        self._effect_thread = None
 
     def _send_command(self, payload):
         """Send command with built-in retry for busy device scenarios.
@@ -110,7 +113,10 @@ class GoveeLanDevice:
     def set_color(self, r, g, b, temp=None):
         """Set color. For H607C, color temperature affects white channel mixing.
         temp=None: pure RGB mode (no white channel)
-        temp=0: disable white channel explicitly"""
+        temp=0: disable white channel explicitly
+
+        Returns True on success, False on failure.
+        """
         r = max(0, min(255, int(r)))
         g = max(0, min(255, int(g)))
         b = max(0, min(255, int(b)))
@@ -139,7 +145,7 @@ class GoveeLanDevice:
             }
             debug_print(f"Setting RGB({r},{g},{b}) @ {temp}K...")
 
-        self._send_command(payload)
+        return self._send_command(payload)
 
     def blink(self, reps=1):
         """Blink the light."""
@@ -212,3 +218,32 @@ class GoveeLanDevice:
             current_b = int(start_b * (1 - factor) + b * factor)
             self.set_color(current_r, current_g, current_b, temp=None)
             time.sleep(delay)
+
+    def stop_effect(self):
+        """Stop any running effect thread gracefully."""
+        if self._effect_thread and self._effect_thread.is_alive():
+            debug_print("Stopping current effect...")
+            self._effect_stop_event.set()
+            self._effect_thread.join(timeout=2.0)
+        self._effect_stop_event.clear()
+        self._effect_thread = None
+
+    def set_mode_color(self, r, g, b, period=3.0):
+        """Set a solid color for the given mode.
+
+        The H607C's firmware adds warm white when RGB values are scaled,
+        causing visible flickering. This method sets the color once and
+        maintains it reliably.
+
+        Args:
+            r, g, b: Target color (0-255)
+            period: Unused, kept for API compatibility
+        """
+        if not self.isInitialized:
+            debug_print("Cannot set color: device not initialized")
+            return
+
+        self.stop_effect()
+        debug_print(f"Setting solid color RGB({r},{g},{b})")
+
+        self.set_color(r, g, b, temp=None)
