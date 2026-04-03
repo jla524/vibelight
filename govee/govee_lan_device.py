@@ -11,8 +11,8 @@ MCAST_RECV_PORT = 4002
 DEVICE_CONTROL_PORT = 4003
 
 # Retry settings for busy device
-DEVICE_BUSY_RETRY_DELAY = 0.1
-MAX_DEVICE_RETRIES = 3
+DEVICE_BUSY_RETRY_DELAY = 0.05
+MAX_DEVICE_RETRIES = 2
 
 
 class GoveeLanDevice:
@@ -219,12 +219,17 @@ class GoveeLanDevice:
             self.set_color(current_r, current_g, current_b, temp=None)
             time.sleep(delay)
 
-    def stop_effect(self):
-        """Stop any running effect thread gracefully."""
+    def stop_effect(self, blocking=False):
+        """Stop any running effect thread.
+
+        Args:
+            blocking: If True, wait for thread to finish. If False, signal and return immediately.
+        """
         if self._effect_thread and self._effect_thread.is_alive():
             debug_print("Stopping current effect...")
             self._effect_stop_event.set()
-            self._effect_thread.join(timeout=2.0)
+            if blocking:
+                self._effect_thread.join(timeout=0.5)
         self._effect_stop_event.clear()
         self._effect_thread = None
 
