@@ -4,6 +4,7 @@ import threading
 import math
 from . import udp
 from . import discover
+from .utils import debug_print
 
 # Govee Multicast Network Parameters
 MCAST_GRP = "239.255.255.250"
@@ -27,7 +28,7 @@ class GoveeLanDevice:
             self.mac = mac
             self.name = name
             self.isInitialized = True
-            print(f"Discovered Govee LED device: {name} at {ip} ({mac})")
+            debug_print(f"Discovered Govee LED device: {name} at {ip} ({mac})")
 
         # Initialize effect management (even if device not found)
         self._current_effect = None
@@ -36,40 +37,44 @@ class GoveeLanDevice:
     def on(self):
         """Turn the light on."""
         payload = {"msg": {"cmd": "turn", "data": {"value": 1}}}
-        print("Turning on...")
+        debug_print("Turning on...")
         udp.send_udp_packet(self.ip, DEVICE_CONTROL_PORT, payload)
 
     def off(self):
         """Turn the light off."""
         payload = {"msg": {"cmd": "turn", "data": {"value": 0}}}
-        print("Turning off...")
+        debug_print("Turning off...")
         udp.send_udp_packet(self.ip, DEVICE_CONTROL_PORT, payload)
 
     def set_brightness(self, brightness):
         """Set brightness (0-100)."""
         brightness = max(0, min(100, int(brightness)))
         payload = {"msg": {"cmd": "brightness", "data": {"value": brightness}}}
-        print(f"Setting brightness to {brightness}%...")
+        debug_print(f"Setting brightness to {brightness}%...")
         udp.send_udp_packet(self.ip, DEVICE_CONTROL_PORT, payload)
 
     def set_color(self, r, g, b, temp=None):
         """Set color. For H607C, color temperature affects white channel mixing.
-        Try temp=0 or temp=None to disable white channel and get pure colors."""
+        temp=None: pure RGB mode (no white channel)
+        temp=0: disable white channel explicitly"""
         r = max(0, min(255, int(r)))
         g = max(0, min(255, int(g)))
         b = max(0, min(255, int(b)))
 
-        if temp is None:
-            # Pure RGB mode - may work better for H607C
+        if temp is None or temp == 0:
+            # Pure RGB mode - use temp=0 to disable white channel
             payload = {
                 "msg": {
                     "cmd": "colorwc",
-                    "data": {"color": {"r": r, "g": g, "b": b}},
+                    "data": {
+                        "color": {"r": r, "g": g, "b": b},
+                        "colorTemInKelvin": 0,  # Explicitly disable white
+                    },
                 }
             }
-            print(f"Setting pure RGB({r},{g},{b})")
+            debug_print(f"Setting pure RGB({r},{g},{b})")
         else:
-            temp = max(0, min(9000, int(temp)))
+            temp = max(2700, min(9000, int(temp)))
             payload = {
                 "msg": {
                     "cmd": "colorwc",
@@ -79,7 +84,7 @@ class GoveeLanDevice:
                     },
                 }
             }
-            print(f"Setting RGB({r},{g},{b}) @ {temp}K...")
+            debug_print(f"Setting RGB({r},{g},{b}) @ {temp}K...")
 
         udp.send_udp_packet(self.ip, DEVICE_CONTROL_PORT, payload)
 
@@ -127,7 +132,7 @@ class GoveeLanDevice:
             self._current_effect.join(timeout=1.0)
             self._current_effect = None
             self._stop_event.clear()
-        print("Stopped current effect.")
+        debug_print("Stopped current effect.")
 
     def _breathe_thread(self, color, min_bright, max_bright, speed):
         """Background thread for breathing effect."""
@@ -141,8 +146,8 @@ class GoveeLanDevice:
             )
             brightness = int(brightness)
 
-            # Set color and brightness
-            self.set_color(r, g, b, 6500)
+            # Set color and brightness - use pure RGB mode (temp=None) for H607C
+            self.set_color(r, g, b, temp=None)
             self.set_brightness(brightness)
 
             phase += 0.1 * speed
@@ -151,13 +156,20 @@ class GoveeLanDevice:
     def breathe(self, r, g, b, min_bright=20, max_bright=85, speed=2.0):
         """Start breathing effect with given color and parameters."""
         if not self.isInitialized:
-            print("Device not initialized.")
+            debug_print("Device not initialized.")
             return
 
         # Stop any existing effect
         self.stop()
 
-        print(
+        # Small delay to ensure previous effect is fully stopped
+        time.sleep(0.2)
+
+        # Set initial color immediately so user sees the change
+        self.set_color(r, g, b, temp=None)
+        self.set_brightness(min_bright)
+
+        debug_print(
             f"Starting breathe effect with RGB({r},{g},{b}), range {min_bright}-{max_bright}, speed {speed}"
         )
 

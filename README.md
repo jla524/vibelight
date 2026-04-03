@@ -8,4 +8,12 @@ A light that fits the vibe. Inspired by [claude-lamp](https://github.com/bobek-b
 - Smooth transitions between modes
 - Background effect management with `stop()` capability
 
-Run with: `python vibe.py [plan|build|idle]`
+## Quickstart
+
+```bash
+# Run with: `python vibe.py [plan|build|idle]`
+python vibe.py idle
+
+# Install as opencode plugin (auto-syncs lamp to agent state)
+ln -s "$(pwd)/update_mode.ts" ~/.config/opencode/plugins/
+```

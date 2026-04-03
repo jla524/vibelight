@@ -1,5 +1,6 @@
 import json
 from . import udp
+from .utils import debug_print
 
 # Govee Multicast Network Parameters
 MCAST_GRP = "239.255.255.250"
@@ -16,10 +17,10 @@ def discover_govee_leds():
     data, addr = udp.receive_udp_packet(MCAST_GRP, MCAST_RECV_PORT, 5)
 
     if data is None:
-        print("No Govee LED devices found on the network.")
+        debug_print("No Govee LED devices found on the network.")
         return None, None, None
     else:
-        print(f"Received message from {addr}: {data}")
+        debug_print(f"Received message from {addr}: {data}")
         discovery_data = json.loads(data.decode("utf-8"))
         ip = discovery_data["msg"]["data"]["ip"]
         mac = discovery_data["msg"]["data"]["device"]
