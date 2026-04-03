@@ -2,13 +2,9 @@
 
 Original: https://github.com/srinivasansharath/govee_lan_control
 MIT License - Copyright (c) Sharath Srinivasan
-
-Added: breathe() effects with mode-specific breathing patterns
-and smooth transitions between modes.
 """
 
 from .govee_lan_device import GoveeLanDevice
-from .lock import acquire_lock, release_lock
 from .utils import debug_print
 
-__all__ = ["GoveeLanDevice", "debug_print", "acquire_lock", "release_lock"]
+__all__ = ["GoveeLanDevice", "debug_print"]

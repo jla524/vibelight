@@ -1,6 +1,6 @@
 import { realpathSync } from 'fs';
 
-export default async ({ $ }) => {
+export default async ({ $, client }) => {
   const pluginPath = new URL(import.meta.url).pathname;
   const realPluginPath = realpathSync(pluginPath);
   const pluginDir = new URL(".", `file://${realPluginPath}`).pathname;
@@ -9,16 +9,11 @@ export default async ({ $ }) => {
 
   let currentMode: 'on' | 'off' | 'idle' | 'plan' | 'build' = 'idle';
   let lastUpdate = 0;
-  const MIN_INTERVAL_MS = 100;
+  const MIN_INTERVAL_MS = 500;
+  let currentSessionId: string | null = null;
 
   const sendLedCommand = async (mode: 'on' | 'off' | 'idle' | 'plan' | 'build') => {
     if (mode === currentMode) {
-      return;
-    }
-
-    // Block direct transitions between plan and build
-    if ((currentMode === 'plan' && mode === 'build') ||
-        (currentMode === 'build' && mode === 'plan')) {
       return;
     }
 
@@ -29,15 +24,34 @@ export default async ({ $ }) => {
 
     currentMode = mode;
     lastUpdate = Date.now();
-    await $`${venvPython} ${ledScript} ${mode}`;
+    await $`${venvPython} ${ledScript} ${mode}`.quiet();
+  };
+
+  const detectAgentFromSession = async () => {
+    if (!currentSessionId) return;
+    try {
+      const session = await client.session.get({ path: { id: currentSessionId } });
+      const messages = await client.session.messages({ path: { id: currentSessionId } });
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage?.info?.role === "user" && "agent" in lastMessage.info) {
+        const agent = (lastMessage.info as any).agent;
+        if (agent === "plan" || agent === "build") {
+          await sendLedCommand(agent);
+        }
+      }
+    } catch {
+      // Session may not exist yet
+    }
   };
 
   return {
-    "session.created": async () => {
+    "session.created": async ({ event }) => {
+      currentSessionId = event?.properties?.session?.id || null;
       await sendLedCommand("on");
     },
 
     "session.deleted": async () => {
+      currentSessionId = null;
       await sendLedCommand("off");
     },
 
@@ -46,7 +60,7 @@ export default async ({ $ }) => {
         const info = event.properties?.info;
         if (!info) return;
 
-        // UserMessage has an "agent" field telling us which agent is active
+        // Detect agent switches from user messages
         if (info.role === "user" && "agent" in info) {
           const agent = (info as any).agent;
           if (agent === "plan") {
