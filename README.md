@@ -12,18 +12,40 @@ A light that fits the vibe. Inspired by [claude-lamp](https://github.com/bobek-b
 
 ## Quickstart
 
+### 1. Install to PATH
+
+Add the `vibe` command to your PATH so it's available anywhere:
+
 ```bash
-# Run with: `python vibe.py [plan|build|idle]`
-python vibe.py idle
+# Ensure ~/.local/bin exists and is in your PATH
+mkdir -p ~/.local/bin
+export PATH="$HOME/.local/bin:$PATH"  # Add to ~/.zshrc if not already there
 
-# Install as opencode plugin (auto-syncs lamp to agent state)
-ln -s "$(pwd)/update_mode.ts" ~/.config/opencode/plugins/
+# Create symlink
+ln -s /Users/jacky/repos/vibelight/vibe.py ~/.local/bin/vibe
+```
 
-# Turn on/off light when opencode starts/exits (add to ~/.zshrc)
-export VIBELIGHT_DIR="/Users/dudu/repos/vibelight"
-opencode() {
-  "$VIBELIGHT_DIR/.venv/bin/python" "$VIBELIGHT_DIR/vibe.py" on
-  command opencode "$@"
-  "$VIBELIGHT_DIR/.venv/bin/python" "$VIBELIGHT_DIR/vibe.py" off
-}
+### 2. Install opencode plugin
+
+```bash
+# Symlink the plugin to opencode's plugin directory
+ln -s /Users/jacky/repos/vibelight/update_mode.ts ~/.config/opencode/plugins/
+```
+
+### 3. Optional: Turn on/off with opencode
+
+Add to your `~/.zshrc`:
+
+```bash
+alias opencode="vibe on && \opencode && vibe off"
+```
+
+### Manual usage
+
+```bash
+vibe idle    # Calm breathing (white)
+vibe plan    # Energetic breathing (orange)
+vibe build   # Balanced breathing (blue)
+vibe on      # Turn on steady light
+vibe off     # Turn off
 ```

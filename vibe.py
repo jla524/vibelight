@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import signal
 import sys
 from govee import GoveeLanDevice, debug_print
