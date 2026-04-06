@@ -57,8 +57,17 @@ The Cursor hook activates "agent" mode (purple breathing) when an Agent session 
 Add to your `~/.zshrc`:
 
 ```bash
-alias opencode="vibe on && \opencode && vibe off"
+# Remove any existing alias first (to avoid zsh parse errors)
+unalias opencode 2>/dev/null
+
+opencode() {
+    vibe on
+    command opencode "$@"
+    vibe off
+}
 ```
+
+Now when you run any opencode command (e.g., `opencode models refresh`), the light will turn on first, execute the command, then turn off after.
 
 ### Manual usage
 
