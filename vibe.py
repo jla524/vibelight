@@ -25,6 +25,7 @@ def set_status(status: str):
     Using pure RGB mode (temp=None) for better color accuracy on H607C.
     - plan: energetic orange
     - build: balanced blue
+    - agent: creative purple (for Cursor agent mode)
     - idle: calm gray
     - on: turn on the light
     - off: turn off the light
@@ -47,13 +48,12 @@ def set_status(status: str):
         led.off()
         return
 
-    led.stop_effect()
-    led.on()
-
     if status == "plan":
         led.set_mode_color(245, 130, 40)
     elif status == "build":
         led.set_mode_color(70, 130, 245)
+    elif status == "agent":
+        led.set_mode_color(150, 50, 200)
     else:  # idle
         led.set_mode_color(240, 240, 240)
 
@@ -64,4 +64,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         set_status(sys.argv[1])
     else:
-        print(f"Usage: python {sys.argv[0]} [on|plan|build|idle|off]")
+        print(f"Usage: python {sys.argv[0]} [on|plan|build|agent|idle|off]")
