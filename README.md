@@ -68,7 +68,7 @@ opencode() {
 }
 ```
 
-Now when you run any opencode command (e.g., `opencode models refresh`), the light will turn on first, execute the command, then turn off after.
+Now when you run any opencode command (e.g., `opencode models --refresh`), the light will turn on first, execute the command, then turn off after.
 
 ### 4. Optional: Cursor from the terminal (zsh)
 
