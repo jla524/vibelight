@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
+import json
+import os
 import signal
 import sys
+
 from govee import GoveeLanDevice, debug_print
 
 # Discover or hard-code your Govee strip's MAC/IP once
@@ -60,8 +63,58 @@ def set_status(status: str):
     debug_print(f"Set {status} color.")
 
 
+# Cursor hooks: stdin JSON with hook_event_name. Do not treat sessionIdle as
+# idle — Cursor can emit it while the agent is still working and would override
+# purple. Match names case-insensitively.
+_CURSOR_AGENT = frozenset(
+    {
+        "beforesubmitprompt",
+        "beforeshellexecution",
+        "aftershellexecution",
+        "beforemcpexecution",
+        "aftermcpexecution",
+        "beforereadfile",
+        "afterfileedit",
+        "afteragentresponse",
+        "afteragentthought",
+    }
+)
+_CURSOR_IDLE = frozenset(
+    {
+        "sessionstart",
+        "sessionend",
+        "stop",
+    }
+)
+
+
+def run_cursor_hook() -> None:
+    """Read Cursor hook JSON from stdin; set lamp; print {} for the hooks protocol."""
+    raw = sys.stdin.read()
+    try:
+        payload: dict = json.loads(raw) if raw.strip() else {}
+    except json.JSONDecodeError as e:
+        print(f"[vibelight] invalid stdin JSON: {e}", file=sys.stderr)
+        payload = {}
+
+    if os.environ.get("VIBELIGHT_DEBUG"):
+        print("[vibelight] stdin payload:", json.dumps(payload), file=sys.stderr)
+
+    name = payload.get("hook_event_name")
+    event = str(name).lower() if name is not None else ""
+
+    if event in _CURSOR_IDLE:
+        set_status("idle")
+    elif event in _CURSOR_AGENT:
+        set_status("agent")
+
+    print("{}")
+
+
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 1 and sys.argv[1] == "cursor-hook":
+        run_cursor_hook()
+    elif len(sys.argv) > 1:
         set_status(sys.argv[1])
     else:
-        print(f"Usage: python {sys.argv[0]} [on|plan|build|agent|idle|off]")
+        print(f"Usage: python {sys.argv[0]} [on|plan|build|agent|idle|off|cursor-hook]")

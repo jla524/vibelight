@@ -46,11 +46,12 @@ ln -s "$(pwd)/update_mode.ts" ~/.config/opencode/plugins/
 ### 2b. Install Cursor hooks (optional)
 
 ```bash
-# Symlink the hooks config to Cursor's config directory
+# Symlink the hooks config and vibe entrypoint (global hooks run with cwd ~/.cursor/)
 ln -s "$(pwd)/cursor_hooks.json.example" ~/.cursor/hooks.json
+ln -sf "$(pwd)/vibe.py" ~/.cursor/vibe.py
 ```
 
-The Cursor hook activates "agent" mode (purple breathing) when an Agent session starts, and returns to "idle" (white) when the session ends.
+Hooks call `python3 ./vibe.py cursor-hook`: purple while the agent is working (submit, tools, reads, edits), grey on session start/end and when a run completes (`stop`). Do not register `sessionIdle` in hooks — Cursor can emit it during an active agent run and would force grey over purple.
 
 ### 3. Optional: Turn on/off with opencode
 
@@ -68,6 +69,31 @@ opencode() {
 ```
 
 Now when you run any opencode command (e.g., `opencode models refresh`), the light will turn on first, execute the command, then turn off after.
+
+### 4. Optional: Cursor from the terminal (zsh)
+
+Same idea as opencode: wrap `cursor` in a function so launching Cursor from the shell sets the lamp first.
+
+```bash
+unalias cursor 2>/dev/null
+
+cursor() {
+    vibe idle
+    command cursor "$@"
+}
+```
+
+This sets **idle** (grey) when you run `cursor` or `cursor .` from a terminal. The Cursor CLI usually returns as soon as the app opens, so hooks still control purple/grey while you work inside the editor.
+
+To mirror opencode literally (`vibe on` / `vibe off`), you can use the same pattern; note that `vibe off` may run right after the CLI exits even though Cursor stays open:
+
+```bash
+cursor() {
+    vibe on
+    command cursor "$@"
+    vibe off
+}
+```
 
 ### Manual usage
 
