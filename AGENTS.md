@@ -14,7 +14,10 @@ Vibelight controls a Govee Floor Lamp 2 (H607C) via LAN multicast. It provides m
 
 ```bash
 # Run the application
-python vibe.py [plan|build|idle]
+python vibe.py [on|plan|build|agent|idle|off]
+
+# Cursor hook mode (reads JSON from stdin)
+python vibe.py cursor-hook
 
 # With uv
 uv run python vibe.py plan
@@ -104,15 +107,16 @@ All Govee network constants are defined at module level:
 ## Project Structure
 
 ```
-/Users/dudu/repos/vibelight/
-├── vibe.py              # CLI entry point
-├── pyproject.toml       # Package config (uv-managed)
-├── uv.lock              # Locked dependencies
-├── govee/               # Vendored LAN control library
-│   ├── __init__.py      # Exports GoveeLanDevice
-│   ├── govee_lan_device.py  # Main device class
-│   ├── discover.py      # Network discovery
-│   └── udp.py           # UDP communication
+/Users/jacky/repos/vibelight/
+├── vibe.py                    # CLI entry point + cursor-hook subcommand
+├── cursor_hooks.json.example  # Example Cursor hooks config
+├── pyproject.toml             # Package config (uv-managed)
+├── uv.lock                    # Locked dependencies
+├── govee/                     # Vendored LAN control library
+│   ├── __init__.py            # Exports GoveeLanDevice
+│   ├── govee_lan_device.py    # Main device class
+│   ├── discover.py            # Network discovery
+│   └── udp.py                 # UDP communication
 └── README.md
 ```
 
@@ -123,6 +127,15 @@ All Govee network constants are defined at module level:
 3. Run `ruff format .` if needed
 4. Test with `python vibe.py <mode>`
 5. Verify effects work with actual hardware
+
+## Cursor Hook Integration
+
+`vibe.py cursor-hook` reads a JSON payload from stdin (as sent by Cursor's hook system) and maps events to lamp modes:
+
+- **Agent events** (`beforeShellExecution`, `afterShellExecution`, `beforeMCPExecution`, `afterMCPExecution`, `beforeReadFile`, `afterFileEdit`, `beforeSubmitPrompt`, `afterAgentResponse`, `afterAgentThought`) → `agent` (purple)
+- **Idle events** (`sessionStart`, `sessionEnd`, `stop`) → `idle` (gray)
+
+Copy `cursor_hooks.json.example` to `.cursor/hooks.json` in any project to enable. Set `VIBELIGHT_DEBUG=1` for verbose stderr output.
 
 ## No Cursor/Copilot Rules
 
