@@ -109,7 +109,7 @@ All Govee network constants are defined at module level:
 ```
 /Users/jacky/repos/vibelight/
 ├── vibe.py                    # CLI entry point + cursor-hook subcommand
-├── cursor_hooks.json.example  # Example Cursor hooks config
+├── cursor_hooks.json          # Cursor hooks config
 ├── pyproject.toml             # Package config (uv-managed)
 ├── uv.lock                    # Locked dependencies
 ├── govee/                     # Vendored LAN control library
@@ -135,7 +135,7 @@ All Govee network constants are defined at module level:
 - **Agent events** (`beforeShellExecution`, `afterShellExecution`, `beforeMCPExecution`, `afterMCPExecution`, `beforeReadFile`, `afterFileEdit`, `beforeSubmitPrompt`, `afterAgentResponse`, `afterAgentThought`) → `agent` (purple)
 - **Idle events** (`sessionStart`, `sessionEnd`, `stop`) → `idle` (gray)
 
-Copy `cursor_hooks.json.example` to `.cursor/hooks.json` in any project to enable. Set `VIBELIGHT_DEBUG=1` for verbose stderr output.
+Copy `cursor_hooks.json` to `.cursor/hooks.json` in any project to enable. Set `VIBELIGHT_DEBUG=1` for verbose stderr output.
 
 ## No Cursor/Copilot Rules
 

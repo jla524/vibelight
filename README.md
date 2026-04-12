@@ -47,7 +47,7 @@ ln -s "$(pwd)/update_mode.ts" ~/.config/opencode/plugins/
 
 ```bash
 # Symlink the hooks config and vibe entrypoint (global hooks run with cwd ~/.cursor/)
-ln -s "$(pwd)/cursor_hooks.json.example" ~/.cursor/hooks.json
+ln -s "$(pwd)/cursor_hooks.json" ~/.cursor/hooks.json
 ln -sf "$(pwd)/vibe.py" ~/.cursor/vibe.py
 ```
 
