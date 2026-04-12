@@ -6,8 +6,7 @@ A light that fits the vibe. Inspired by [claude-lamp](https://github.com/bobek-b
 
 ## Features
 - Govee Floor Lamp 2 (H607C) control via LAN multicast
-- Five lighting modes with smooth pulse/breathing: plan (energetic orange), build (balanced blue), agent (creative purple), idle (calm gray), on/off
-
+- Five lighting modes: plan (orange), build (blue), agent (purple), idle (white), on/off
 - Pure RGB mode for accurate color reproduction (no white channel mixing)
 - Automatic device discovery via UDP multicast
 - Opencode plugin for automatic mode switching based on agent activity
@@ -99,10 +98,10 @@ cursor() {
 ### Manual usage
 
 ```bash
-vibe idle    # Calm solid gray (no pulse)
-vibe plan    # Energetic slow pulse (orange)
-vibe build   # Balanced slow pulse (blue)
-vibe agent   # Creative slow pulse (purple) - for Cursor agent mode
+vibe idle    # Calm breathing (white)
+vibe plan    # Energetic breathing (orange)
+vibe build   # Balanced breathing (blue)
+vibe agent   # Creative breathing (purple) - for Cursor agent mode
 vibe on      # Turn on steady light
 vibe off     # Turn off
 ```

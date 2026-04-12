@@ -1,5 +1,4 @@
 import json
-import math
 import threading
 import time
 from . import udp
@@ -234,50 +233,22 @@ class GoveeLanDevice:
         self._effect_stop_event.clear()
         self._effect_thread = None
 
-    def set_mode_color(self, r, g, b, period=3.0, min_brightness=45):
-        """Start breathing/pulse effect using fixed color + varying brightness.
+    def set_mode_color(self, r, g, b, period=3.0):
+        """Set a solid color for the given mode.
 
-        More reliable for H607C floor lamp than RGB scaling. Sets full color once,
-        then pulses brightness (min_brightness-100%) via sine wave.
+        The H607C's firmware adds warm white when RGB values are scaled,
+        causing visible flickering. This method sets the color once and
+        maintains it reliably.
 
         Args:
-            r, g, b: Base color (0-255)
-            period: Full breathe cycle time in seconds (smaller = faster pulse)
-            min_brightness: Minimum brightness percent (higher = less dim)
+            r, g, b: Target color (0-255)
+            period: Unused, kept for API compatibility
         """
         if not self.isInitialized:
             debug_print("Cannot set color: device not initialized")
             return
 
         self.stop_effect()
-        debug_print(
-            f"Starting breathe RGB({r},{g},{b}) period={period:.1f}s minb={min_brightness}"
-        )
+        debug_print(f"Setting solid color RGB({r},{g},{b})")
 
         self.set_color(r, g, b, temp=None)
-        self.set_brightness(100)
-
-        def breathe_loop():
-            start_time = time.time()
-            last_b = None
-            last_time = 0.0
-            min_interval = 0.12
-            while not self._effect_stop_event.is_set():
-                try:
-                    t = time.time() - start_time
-                    phase = math.sin(2 * math.pi * t / period)
-                    b = int(
-                        min_brightness + (100 - min_brightness) * (phase + 1.0) / 2.0
-                    )
-                    now = time.time()
-                    if b != last_b and (now - last_time) >= min_interval:
-                        self.set_brightness(b)
-                        last_b = b
-                        last_time = now
-                    time.sleep(0.08)
-                except Exception as e:
-                    debug_print(f"Breathe loop error: {e}")
-                    time.sleep(0.5)
-
-        self._effect_thread = threading.Thread(target=breathe_loop, daemon=False)
-        self._effect_thread.start()
