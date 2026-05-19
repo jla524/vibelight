@@ -34,7 +34,7 @@ def set_status(status: str):
     - off: turn off the light
     """
     if not led.isInitialized:
-        print("Error: No Govee device found")
+        debug_print("No Govee device found; skipping")
         return
 
     debug_print(f"Setting mode: {status}")
